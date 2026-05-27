@@ -6,14 +6,21 @@ const { exec } = require('child_process');
 const os = require('os');
 const http = require('http');
 const dgram = require('dgram');
+const { Gpio } = require('onoff');
+
 const targetFile = '/var/opt/neeo/nbr-rest.json';
-const advertisedName = 'NEEOBETA-jn5168';
+const initFile = '/steady/neeo/cp6/BRAINNAME.json';
+let advertisedName = 'NEEOBETA-jn5168';
 
             
 // Configuration
-let DOCKER_IPV4_IP = null;              // CHANGED: Points directly to the dynamic physical host IP where Docker listens
+let DOCKER_IPV4_IP = null; // CHANGED: Points directly to the dynamic physical host IP where Docker listens
 const IPV6_PORT = 3901;            
-const DOCKER_PORT = 3901;               // The listening port of your Docker firmware
+const DOCKER_PORT = 3901;                  // The listening port of your Docker firmware
+
+const TOUCHBUTTON_PIN = process.env.NEEO_GPIO_TOUCHBUTTON_VALUE || 239;
+const DEBOUNCE_TIMEOUT_MS = 20;
+const LONG_PRESS_TIMEOUT_MS = 6000;
 
             
 // Initialize sockets
@@ -22,7 +29,114 @@ const dockerClient4 = dgram.createSocket('udp4');
 var nrBRLoggings = 10;
 var nrBacktoBRLoggings = 10;
 
+class TouchButton {
+    constructor() {
+        this.touchButtonPressedTimestamp = -1;
+        this.longPressTimer = null;
+    }
+
+    _armLongPressAction() {
+        this.longPressTimer = setTimeout(() => {
+            console.log(getFormattedTimestamp(), "-> debug: long press detected (6s)");
+            sendHttpGet("LongTouchButton");
+            this.longPressTimer = null;
+        }, LONG_PRESS_TIMEOUT_MS);
+    }
+
+    registerKeypress(isPressed) {
+        if (isPressed) {
+            this.touchButtonPressedTimestamp = Date.now();
+            this._armLongPressAction();
+        } else {
+            if (this.longPressTimer !== null) {
+                clearTimeout(this.longPressTimer);
+                this.longPressTimer = null;
+                sendHttpGet("TouchButton");
+            }
+        }
+    }
+}
+
+function sendHttpGet(endpoint) {
+    if (!DOCKER_IPV4_IP) {
+        console.warn(getFormattedTimestamp(),`[WARN] ${endpoint} call received for Brain,  but Docker IP has not been dynamically detected via HTTP yet!`);
+        return;
+    }
+    const url = `http://${DOCKER_IPV4_IP}:3000/v1/api/${endpoint}`;
+
+    console.log(getFormattedTimestamp(), `[HTTP OUT] Sending: GET ${url}`);
+    
+    http.get(url, (res) => {
+        console.log(getFormattedTimestamp(), `[HTTP OUT] Response status: ${res.statusCode}`);
+        res.resume(); // Consume response data to free up memory
+    }).on('error', (err) => {
+        console.error(getFormattedTimestamp(), `[HTTP OUT ERROR] Failed to connect to ${url}:`, err.message);
+    });
+}
+
+function initGpioTouchbutton() {
+    console.log(getFormattedTimestamp(), `[GPIO INIT] Initializing touchbutton on GPIO pin: ${TOUCHBUTTON_PIN}`);
+    try {
+        const touchbuttonHandler = new TouchButton();
+
+        try {
+            new Gpio(TOUCHBUTTON_PIN, "in", "both").unexport();
+        } catch (e) {
+            // Pin was already unexported, safe to ignore
+        }
+
+        const hardwarePin = new Gpio(TOUCHBUTTON_PIN, "in", "both", {
+            debounceTimeout: DEBOUNCE_TIMEOUT_MS
+        });
+
+        hardwarePin.watch((err, value) => {
+            if (err) {
+                console.error(getFormattedTimestamp(), "[GPIO ERROR] Watch failed:", err.message);
+                return;
+            }
+            touchbuttonHandler.registerKeypress(value === 1);
+        });
+
+        process.on('exit', () => {
+            hardwarePin.unexport();
+        });
+
+    } catch (err) {
+        console.error(getFormattedTimestamp(), "[GPIO ERROR] Initialization failed:", err.message);
+    }
+}
+
+function readInitFile() {
+    try {
+        const cleanName = advertisedName.replace('-jn5168', '');
+
+        if (fs.existsSync(initFile)) {
+            const data = fs.readFileSync(initFile, 'utf8');
+            const config = JSON.parse(data);
+            if (config && config.advertisedName) {
+                // Remove existing suffix if present in the user's file before adding it for runtime execution
+                const baseConfigName = config.advertisedName.replace('-jn5168', '');
+                advertisedName = baseConfigName + "-jn5168";
+                console.log(getFormattedTimestamp(), `[INIT CONFIG] Loaded advertisedName from config: ${advertisedName}`);
+            } else {
+                console.warn(getFormattedTimestamp(), `[INIT CONFIG] key 'advertisedName' missing in JSON. Rewriting with default.`);
+                const defaultConfig = { advertisedName: cleanName };
+                fs.writeFileSync(initFile, JSON.stringify(defaultConfig, null, 4), 'utf8');
+                advertisedName = cleanName + "-jn5168";
+            }
+        } else {
+            const defaultConfig = { advertisedName: cleanName };
+            fs.writeFileSync(initFile, JSON.stringify(defaultConfig, null, 4), 'utf8');
+            console.log(getFormattedTimestamp(), `[INIT CONFIG] Created default configuration file at: ${initFile}`);
+            advertisedName = cleanName + "-jn5168";
+        }    } catch (err) {
+        console.error(getFormattedTimestamp(), `[INIT CONFIG ERROR] Failed to process ${initFile}:`, err.message);
+    }
+}
+
 function init() {
+
+    readInitFile();
 
     readFileContent(targetFile, 'INITIAL');
 
@@ -32,9 +146,8 @@ function init() {
         }
     });
     
-    // Using native avahi-publish command as software on phsyical brain is rather old and newer packages may disrupt NEEO firmware
+    // Using native avahi-publish command as software on brain is rather old and newer packages may disrupt NEEO firmware
     // Syntax: avahi-publish -s [Name] [Service_Type] [Port]
-    // NOte: although port is filled in with 8088, it is not used anywhere 
     const avahiCmd = `avahi-publish -s "${advertisedName}" _http._tcp 8088 "ip=${getLocalIPv4()}"`;
     
     const advertisementProcess = exec(avahiCmd, (error, stdout, stderr) => {
@@ -47,6 +160,8 @@ function init() {
     });
 
     console.log(getFormattedTimestamp(), `[INFO] mDNS Advertisement active: ${advertisedName} on port 8088`);
+
+    initGpioTouchbutton();
 
     process.on('exit', () => {
         advertisementProcess.kill();
@@ -231,8 +346,6 @@ let lastBorderRouterInfo = null;
 
     dockerClient4.bind();
 }
-
-/**************************************/
 
 init();
 main();
