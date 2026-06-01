@@ -22,13 +22,10 @@ And this simply controlls your entire entertainment system, lights, AC and whate
 
 You need to have access to the command line of the NEEO BRain as you're going to shutdown nearly all of the older NEEO-software and replacing them by this repository.  
 ## Functionality
-- This bridge needs to know the name of the brain. You have to make a file named BRAINNAME.json in /steady/neeo/cp6 with this JSON-content:
-{
-    "advertisedName": "NEEOBETA"
-}
-Where NEEOBETA needs to be the name of your docker Brain.
-That's where I'm working on now, now that the solution itself is working 100%.
-I'll be releasing scripts to disable all NEEO-software that is no longer required and a script to install this new solution. Don;t worry, I will not remove the old software, hell, I'll even provide a script to re-activate your old NEEO brain if you do not like this solution.
+
+The bridge will "bridge the gap" between IPv6 used on the physical Brain and IPv4 on the Docker Brain. It simply translates IPv4-traffic to IPv6 vice versa.
+You can press the lid of the physical Brain to signal "Discovery and AP-Mode" to Docker.
+
 ## Benefits
 No need for Broadlink infrared transmitters anymore; your old NEEO-Brain will happily step in.
 New remotes (or old ones, if needed) can be paired with your virtual brain again.
