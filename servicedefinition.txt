@@ -1,0 +1,20 @@
+[Unit]
+Description=NEEO-ipbridge-to-docker
+After=network.target remote-fs.target neeo-gpio.service neeo-sixlowpanrouter.service
+Before=nginx.service
+ConditionKernelCommandLine=!blt
+
+[Service]
+Type=simple
+User=root
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/node /opt/BrainBridge.js
+WorkingDirectory=/opt
+StandardOutput=journal
+StandardError=journal
+Restart=always
+RestartSec=1s
+Nice=-5
+
+[Install]
+WantedBy=multi-user.target

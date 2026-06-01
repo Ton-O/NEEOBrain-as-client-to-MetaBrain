@@ -29,3 +29,87 @@ No need for Broadlink infrared transmitters anymore; your old NEEO-Brain will ha
 New remotes (or old ones, if needed) can be paired with your virtual brain again.
 The physical NEEO eco-system is complete again: Brain and remote can find a place within your household (again).
 No extra hardware required. 
+
+## Installation
+Unfortunately, the OS and software on the NEEO brain is very outdated.
+That means that it is rather difficult to get information from the internet using tools like wget or curl. 
+I tried upgrading the software, but that resulted in a damaged, non-bootable Brain constantly.
+
+This leaves "manual installation" as the only viable option. Below I'll outline the steps, then I'll zoom in into every step.
+
+## Installation overview
+1 Mount filesystem rewritable
+2 Add BrainBridge.js
+3 Stop all NEEO Application-processes
+4 Stop META (if running)
+5 Create BrainBridge service
+6 Finish installation by making filesystem readonly
+
+## Installation steps
+Assuming you know how to login to the system via ssh, you have to execute the following steps from 1 to 6 by executing the command in it.
+
+### 1 Mount filesystem rewritable
+sudo mount -o remount,rw /dev/mmcblk0p2 /
+
+### 2 Add BrainBridge.js
+Copy the file BrainBridge.js from this repository (tip: open the file in github.com, then select "Raw" and do a control-A and control-C)
+sudo nano /opt/BrainBridge.js
+paste the entire source into the nano editor (using control-V, Command-V on MacOs)
+save the file with control-x, confirm saving the file
+
+### 3 Stop all NEEO Application-processes
+Give this command (completely copy it)
+sudo systemctl stop neeo-pm2
+sudo systemctl stop neeo-pm2
+
+### 4 Stop META (if running)
+sudo systemctl stop pm2-neeo
+
+### 5 Create BrainBridge service
+sudo nano /usr/lib/systemd/system/NEEO-ipbridge-to-docker.service
+copy and paste the content of servicedefinition.txt
+save (control-x and confirm)
+sudo systemctl daemon-reload
+sudo systemctl enable NEEO-ipbridge-to-docker
+sudo systemctl start NEEO-ipbridge-to-docker
+
+You can check progress by using the journalcntl -f 
+This will write all messages from both the border-router as well the BrainBridge
+sudo systemctl status NEEO-ipbridge-to-docker will show you the status/healthiness of the bridge. This shouldlook like this:
+``` 
+* [neeo@NEEO-a1684a36 opt]$ sudo systemctl status NEEO-ipbridge-to-docker
+* NEEO-ipbridge-to-docker.service - NEEO-ipbridge-to-docker
+   Loaded: loaded (/usr/lib/systemd/system/NEEO-ipbridge-to-docker.service; enabled; vendor preset: disabled)
+   Active: active (running) since Mon 2026-06-01 17:52:34 UTC; 48min ago
+ Main PID: 6784 (node)
+   Memory: 7.0M
+   CGroup: /system.slice/NEEO-ipbridge-to-docker.service
+           |-6784 /usr/bin/node /opt/BrainBridge.js
+           `-6795 avahi-publish -s NEEOBETA-jn5168 _http._tcp 8088 ip=192.168.73.95
+
+Jun 01 17:52:35 NEEO-a1684a36 node[6784]: 2026-06-01 17:52:35.333 HTTP Bridge active: Listening on TCP port 8080 for Docker requests
+Jun 01 17:52:35 NEEO-a1684a36 node[6784]: 2026-06-01 17:52:35.346 /var/opt/neeo/nbr-rest.json loaded initially {"nbr_web_server":"[fda1:684a:36ca::215:8d00:cd:9c38]"}
+Jun 01 17:53:02 NEEO-a1684a36 node[6784]: 2026-06-01 17:53:02.282 /var/opt/neeo/nbr-rest.json changed from "[fda1:684a:36ca::215:8d00:cd:9c38]" to {"nbr_web_server":"[fda1:6>
+Jun 01 17:53:45 NEEO-a1684a36 node[6784]: 2026-06-01 17:53:45.770 [DYNAMIC IP] Docker Brain detected at IP address: 192.168.73.111
+Jun 01 17:53:45 NEEO-a1684a36 node[6784]: 2026-06-01 17:53:45.771 [HTTP IN] HTTP POST received from 192.168.73.111: POST /encryption
+Jun 01 17:53:46 NEEO-a1684a36 node[6784]: 2026-06-01 17:53:46.644 [HTTP IN] HTTP POST received from 192.168.73.111: GET /neighbors
+Jun 01 17:53:50 NEEO-a1684a36 node[6784]: 2026-06-01 17:53:50.293 [HTTP OUT] Sending: GET http://192.168.73.111:3000/v1/api/TouchButton
+Jun 01 17:53:50 NEEO-a1684a36 node[6784]: 2026-06-01 17:53:50.348 [HTTP OUT] Response status: 200
+Jun 01 17:53:50 NEEO-a1684a36 node[6784]: 2026-06-01 17:53:50.369 [HTTP IN] HTTP POST received from 192.168.73.111: POST /discovery
+Jun 01 17:54:16 NEEO-a1684a36 node[6784]: 2026-06-01 17:54:16.671 [HTTP IN] HTTP POST received from 192.168.73.111: POST /blink
+```
+** Active: active (running) since Mon 2026-06-01 17:52:34 UTC; 48min ago * shows that our node is running **
+
+
+### 6 Finish installation by making filesystem readonly
+sudo mount -o remount,rw /dev/mmcblk0p2 /
+
+
+If this does not work, wait patiently for 15 minutes or so and try again. If it still does not work, check what process is blocking:
+sudo fuser -vm /
+This should show you the offending process. Try to stop that process nicely (kill the pid), if not possibly, issue sudo fuser -k -m /
+Then issue again:
+sudo mount -o remount,rw /dev/mmcblk0p2 / 
+
+DO NOT FORGET THIS LAST STEP!!!!!!
+If your Brain freezes for some reason, the root filesystem will not be closed nicely, and a restart may not be possible anymore.
