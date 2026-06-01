@@ -21,7 +21,12 @@ And this simply controlls your entire entertainment system, lights, AC and whate
 3 NEEO Remote
 
 You need to have access to the command line of the NEEO BRain as you're going to shutdown nearly all of the older NEEO-software and replacing them by this repository.  
-## How to install
+## Functionality
+- This bridge needs to know the name of the brain. You have to make a file named BRAINNAME.json in /steady/neeo/cp6 with this JSON-content:
+{
+    "advertisedName": "NEEOBETA"
+}
+Where NEEOBETA needs to be the name of your docker Brain.
 That's where I'm working on now, now that the solution itself is working 100%.
 I'll be releasing scripts to disable all NEEO-software that is no longer required and a script to install this new solution. Don;t worry, I will not remove the old software, hell, I'll even provide a script to re-activate your old NEEO brain if you do not like this solution.
 ## Benefits
@@ -40,10 +45,11 @@ This leaves "manual installation" as the only viable option. Below I'll outline 
 ## Installation overview
 1 Mount filesystem rewritable
 2 Add BrainBridge.js
-3 Stop all NEEO Application-processes
-4 Stop META (if running)
-5 Create BrainBridge service
-6 Finish installation by making filesystem readonly
+3 Define name of Docker Brain
+4 Stop all NEEO Application-processes
+5 Stop META (if running)
+6 Create BrainBridge service
+7 Finish installation by making filesystem readonly
 
 ## Installation steps
 Assuming you know how to login to the system via ssh, you have to execute the following steps from 1 to 6 by executing the command in it.
@@ -57,15 +63,24 @@ sudo nano /opt/BrainBridge.js
 paste the entire source into the nano editor (using control-V, Command-V on MacOs)
 save the file with control-x, confirm saving the file
 
-### 3 Stop all NEEO Application-processes
+### 3 Define name of Docker Brain
+
+The bridge needs to know the name of the brain. 
+You have to create a file named BRAINNAME.json in /steady/neeo/cp6 with this JSON-content:
+{
+    "advertisedName": "NEEOBETA"
+}
+Obviously, you must fill in the name of your Docker Brain in-stead of NEEOBETA
+
+### 4 Stop all NEEO Application-processes
 Give this command (completely copy it)
 sudo systemctl stop neeo-pm2
 sudo systemctl stop neeo-pm2
 
-### 4 Stop META (if running)
+### 5 Stop META (if running)
 sudo systemctl stop pm2-neeo
 
-### 5 Create BrainBridge service
+### 6 Create BrainBridge service
 sudo nano /usr/lib/systemd/system/NEEO-ipbridge-to-docker.service
 copy and paste the content of servicedefinition.txt
 save (control-x and confirm)
@@ -101,7 +116,7 @@ Jun 01 17:54:16 NEEO-a1684a36 node[6784]: 2026-06-01 17:54:16.671 [HTTP IN] HTTP
 ** Active: active (running) since Mon 2026-06-01 17:52:34 UTC; 48min ago * shows that our node is running **
 
 
-### 6 Finish installation by making filesystem readonly
+### 7 Finish installation by making filesystem readonly
 sudo mount -o remount,rw /dev/mmcblk0p2 /
 
 
