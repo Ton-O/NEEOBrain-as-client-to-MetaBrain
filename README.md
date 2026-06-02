@@ -1,7 +1,7 @@
 # NEEOBrain as client to MetaBrain
 Allow physical NEEO brain to be used with virtual MetaBrain 
 ## Short description
-This repository contains shell scripts and Javascript to configure your physical NEEO Brain to act as a client for a virtualised MetaBrain.
+This repository contains a solution to use your physical NEEO Brain to act as a client for a virtualised MetaBrain.
 ##  Functionality
 The essence of this repository is to setup your older physical NEEO BRain in such a way that it still provides the functions that are invaluable but not so resource-consuming.  
 We all loved our NEEO-brain and -remote but after a while, we found it is lacking speed and memory to keep up with newer developments. When you still use it the way you used it when it came out of the box, then you'll probably not complaining but if your want more (like I do), you'll be gettig tired from waiting 2 minutes after a restart.
