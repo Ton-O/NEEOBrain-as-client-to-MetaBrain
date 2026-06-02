@@ -7,9 +7,11 @@ The essence of this repository is to setup your older physical NEEO BRain in suc
 We all loved our NEEO-brain and -remote but after a while, we found it is lacking speed and memory to keep up with newer developments. When you still use it the way you used it when it came out of the box, then you'll probably not complaining but if your want more (like I do), you'll be gettig tired from waiting 2 minutes after a restart.
 So I developed MetaBrain, a solution with custom firmware, based on the original NEEO, but running on much more versatile hardware, therefore being magnitudes faster.
 That was a nearly perfect solution, allowing you to run your NEEO remote way faster and with a virtualised MetaBrain. It provided all functions just as the normal NEEO Brain.
-However, never could I implement the pairing of a (new) remote, simply as that required specific hardware and firmware for it. Let's call it "Border router with JN5168". 
-This repository finally closes the last gap: it allows you to run a virtual MetaBrain together with your old physical NEEO Brain, making this combination  100% compatible with the original NEEO-Brain and -remote.
-## What can I do with this?
+However, never could I implement the pairing of a (new) remote, simply as that required specific hardware and firmware for it.
+I experimented a lot with some jn5168-chips and ESP32, but the Border-router stuff that is used by NEEO is hevaily customised and no source is available, so gave up and chose another track: re-using the physical NEEO Brain that I abandoned long ago (and ws still in a drawer somewhere, eating dust).
+
+This repository is the result of that attemot and finally closes the last gap: it allows you to run a virtual MetaBrain together with your old physical NEEO Brain, making this combination  100% compatible with the original NEEO-Brain and -remote (well 99% I should say; I did not bother to look at the HDMI on the Brain as I never used it).
+## What can I do with it?
 Simply stated, you have:
 - a virtual MetaBrain as the Brains for your remote solution, running somewhere tucked away in a closet.
 - Your trusty NEEO-remote is where it is norm,ally: on the table, close by. 
@@ -21,10 +23,10 @@ And this simply controlls your entire entertainment system, lights, AC and whate
 3 NEEO Remote
 
 You need to have access to the command line of the NEEO BRain as you're going to shutdown nearly all of the older NEEO-software and replacing them by this repository.  
-## Functionality
 
-The bridge will "bridge the gap" between IPv6 used on the physical Brain and IPv4 on the Docker Brain. It simply translates IPv4-traffic to IPv6 vice versa.
-You can press the lid of the physical Brain to signal "Discovery and AP-Mode" to Docker.
+## Functionality
+The repository will "bridge the gap" between IPv6 used on the physical Brain and IPv4 on the Docker Brain. It simply translates IPv4-traffic to IPv6 vice versa and adds some ways for both ends to know each other.
+It also recognisez pressing the lid of the physical Brain to signal "Discovery and AP-Mode functions" to Docker.
 
 ## Benefits
 No need for Broadlink infrared transmitters anymore; your old NEEO-Brain will happily step in.
@@ -70,12 +72,13 @@ You have to create a file named BRAINNAME.json in /steady/neeo/cp6 with this JSO
 Obviously, you must fill in the name of your Docker Brain in-stead of NEEOBETA
 
 ### 4 Stop all NEEO Application-processes
-Give this command (completely copy it)
+Give this commands (completely copy it)
 sudo systemctl stop neeo-pm2
-sudo systemctl stop neeo-pm2
+sudo systemctl disable neeo-pm2
 
 ### 5 Stop META (if running)
 sudo systemctl stop pm2-neeo
+sudo systemctl disable pm2-neeo
 
 ### 6 Create BrainBridge service
 sudo nano /usr/lib/systemd/system/NEEO-ipbridge-to-docker.service
@@ -119,9 +122,10 @@ sudo mount -o remount,rw /dev/mmcblk0p2 /
 
 If this does not work, wait patiently for 15 minutes or so and try again. If it still does not work, check what process is blocking:
 sudo fuser -vm /
-This should show you the offending process. Try to stop that process nicely (kill the pid), if not possibly, issue sudo fuser -k -m /
+This should show you the offending process. Try to stop that process nicely (kill the pid), if not possible, issue sudo fuser -k -m /
 Then issue again:
 sudo mount -o remount,rw /dev/mmcblk0p2 / 
 
 DO NOT FORGET THIS LAST STEP!!!!!!
 If your Brain freezes for some reason, the root filesystem will not be closed nicely, and a restart may not be possible anymore.
+In this case, you need to restore your Brain back to a fresh install (see https://builder.dontvacuum.me)
