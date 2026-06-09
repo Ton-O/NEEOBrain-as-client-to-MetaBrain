@@ -8,7 +8,7 @@ We all loved our NEEO-brain and -remote but after a while, we found it is lackin
 So I developed MetaBrain, a solution with custom firmware, based on the original NEEO, but running on much more versatile hardware, therefore being magnitudes faster.
 That was a nearly perfect solution, allowing you to run your NEEO remote way faster and with a virtualised MetaBrain. It provided all functions just as the normal NEEO Brain.
 However, never could I implement the pairing of a (new) remote, simply as that required specific hardware and firmware for it.
-I experimented a lot with some jn5168-chips and ESP32, but the Border-router stuff that is used by NEEO is hevaily customised and no source is available, so gave up and chose another track: re-using the physical NEEO Brain that I abandoned long ago (and ws still in a drawer somewhere, eating dust).
+I experimented a lot with some jn5168-chips and ESP32, but the Border-router stuff that is used by NEEO is hevaily customised and no source is available, so gave up and chose another track: re-using the physical NEEO Brain that I abandoned long ago (and was still in a drawer somewhere, collecting dust).
 
 This repository is the result of that attemot and finally closes the last gap: it allows you to run a virtual MetaBrain together with your old physical NEEO Brain, making this combination  100% compatible with the original NEEO-Brain and -remote (well 99% I should say; I did not bother to look at the HDMI on the Brain as I never used it).
 ## What can I do with it?
@@ -18,9 +18,9 @@ Simply stated, you have:
 - Your NEEO-Brain placed somewhere centrally so it can sdend infrard signals to the devices you want to control.
 And this simply controlls your entire entertainment system, lights, AC and whatever you like.  
 ## What do I need
-1 Running MetaBrain
-2 NEEO Brain
-3 NEEO Remote
+1 Running MetaBrain  
+2 NEEO Brain  
+3 NEEO Remote  
 
 You need to have access to the command line of the NEEO BRain as you're going to shutdown nearly all of the older NEEO-software and replacing them by this repository.  
 
@@ -126,6 +126,16 @@ This should show you the offending process. Try to stop that process nicely (kil
 Then issue again:
 sudo mount -o remount,rw /dev/mmcblk0p2 / 
 
-DO NOT FORGET THIS LAST STEP!!!!!!
-If your Brain freezes for some reason, the root filesystem will not be closed nicely, and a restart may not be possible anymore.
-In this case, you need to restore your Brain back to a fresh install (see https://builder.dontvacuum.me)
+***DO NOT FORGET THIS LAST STEP!!!!!!***  
+If your Brain freezes for some reason, the root filesystem will not be closed nicely, and a restart may not be possible anymore.  
+In this case, you need to restore your Brain back to a fresh install (see https://builder.dontvacuum.me); note that if you do so, your settings (which are stored on the /steady filesystem) will likely remain available to you (no guarantees though).
+
+## Tips
+1) If you're starting with a fresh "Virtualised Brain" and you get the "did you run the app" question when pairing (blocking the pairing process), then look at the file /steady/neeo/cp6/wifi.json on your Virtualised Brain.  
+That contains the wifi information that is send to your NEEO Remote when pairing; it is probably missing.
+This is the format for its content:  
+{"ssid":"<SSID>","password":"<WPA-KEY>>","encryption":"PSK WPA/WPA2"}   
+Normally, a Brain will connect to a wifi-ssid during its setup; but as you're now running a Virtualised Brain (most likely) without a wifi-adapter, this file will not be created during startup.
+2) The NGINX webserver on your physial brain is still active and working fine. It's backend however (CP6) has been disabled, so the GUI assumes this is a fresh installed system. You can disable startup of nginx to prevent confusion:
+- sudo systemctl stop nginx.service
+- sudo systemctl disable nginx.service
